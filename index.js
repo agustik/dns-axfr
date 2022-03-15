@@ -262,7 +262,7 @@ dns.resolveAxfr = function(server, domain, callback) {
 
             if (typeof res !== 'object') {
                 socket.destroy();
-                callback(new Error(`Invalid response, ( typeof res !== 'object' ) got ${typeof res}`, res);
+                callback(new Error(`Invalid response, ( typeof res !== 'object' ) got ${typeof res}`), res);
             }
         }
 
@@ -280,8 +280,6 @@ dns.resolveAxfr = function(server, domain, callback) {
         }
 
         socket.end();
-
-
     });
 
     socket.on('timeout', function timeout() {
