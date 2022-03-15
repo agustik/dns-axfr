@@ -1,11 +1,11 @@
-var dns = require('dns');
-var net = require('net');
-var ip  = require('ipaddr.js');
+const dns = require('dns');
+const net = require('net');
+const ip  = require('ipaddr.js');
 
 
-var timeout = 0;
+let timeout = 0;
 
-var axfrReqProloge =
+const axfrReqProloge =
     "\x00\x00" +        /* Size */
     "\x00\x00" +        /* Transaction ID */
     "\x00\x20" +        /* Flags: Standard Query */
@@ -14,19 +14,19 @@ var axfrReqProloge =
     "\x00\x00" +        /* Number of Authority RRs */
     "\x00\x00";         /* Number of Aditional RRs */
 
-var axfrReqEpiloge =
+const axfrReqEpiloge =
     "\x00" +            /* End of name */
     "\x00\xfc" +        /* Type: AXFR */
     "\x00\x01";         /* Class: IN */
 
 
 function inet_ntoa(num){
-    var nbuffer = new ArrayBuffer(4);
-    var ndv = new DataView(nbuffer);
+    const nbuffer = new ArrayBuffer(4);
+    const ndv = new DataView(nbuffer);
     ndv.setUint32(0, num);
 
-    var a = new Array();
-    for(var i = 0; i < 4; i++){
+    const a = [];
+    for(let i = 0; i < 4; i++){
         a[i] = ndv.getUint8(i);
     }
     return a.join('.');
@@ -34,16 +34,16 @@ function inet_ntoa(num){
 
 
 function decompressLabel(data, offset) {
-    var res = { len: 0, name: '' };
-    var loffset = offset;
-    var tmpoff = 0;
+    const res = { len: 0, name: '' };
+    let loffset = offset;
+    let tmpoff = 0;
 
     while (data[loffset] != 0x00) {
 
         /* Check for pointers */
         if ((data[loffset] & 0xc0) == 0xc0) {
-            var newoffset = data.readUInt16BE(loffset) & 0x3FFF;
-            var label = decompressLabel(data, (newoffset + 2));
+            const newoffset = data.readUInt16BE(loffset) & 0x3FFF;
+            const label = decompressLabel(data, (newoffset + 2));
             res.name += label.name;
             loffset += 1;
             break;
@@ -65,11 +65,11 @@ function decompressLabel(data, offset) {
 
 function parseResponse(response, result) {
 
-    var offset = 14;
-    var entry, tentry = {};
-    var table = [];
-    var rclass, rlen;
-    var len = response.readUInt16BE(0);
+    let offset = 14;
+    let entry, tentry = {};
+    const table = [];
+    let rclass, rlen;
+    const len = response.readUInt16BE(0);
 
     /* Check for valid length */
     if (response.length != (len + 2))
@@ -83,13 +83,13 @@ function parseResponse(response, result) {
     if ((response[5] & 0x0F) != 0)
         return -3;
 
-    var questions = response.readUInt16BE(6);
-    var answers = response.readUInt16BE(8);
-    var authRRs = response.readUInt16BE(10);
-    var aditRRs = response.readUInt16BE(12);
+    const questions = response.readUInt16BE(6);
+    const answers = response.readUInt16BE(8);
+    const authRRs = response.readUInt16BE(10);
+    const aditRRs = response.readUInt16BE(12);
 
     /* Parse queries */
-    for (var x = 0; x < questions; x++) {
+    for (let x = 0; x < questions; x++) {
         entry = decompressLabel(response, offset);
 
         result.questions.push({
@@ -102,7 +102,7 @@ function parseResponse(response, result) {
     };
 
     /* Parse answers */
-    for (var x = 0; x < answers; x++) {
+    for (let x = 0; x < answers; x++) {
         entry = tentry = {};
 
         /* Parse entry label */
@@ -210,33 +210,32 @@ dns.resolveAxfrTimeout = function(milis) {
 
 dns.resolveAxfr = function(server, domain, callback) {
 
-    var buffers = [];
-    var split = domain.split('.');
-    var results = { questions: [], answers: [] };
-    var responses = [];
-    var len = 0;
-    var tlen = 0;
-    var hostname = server.split(":")[0];
-    var port = server.split(":", 2)[1] || 53;
+    const buffers = [];
+    const split = domain.split('.');
+    const results = { questions: [], answers: [] };
+    let responses = [];
+    let len = 0;
+    let tlen = 0;
+    const hostname = server.split(":")[0];
+    const port = server.split(":", 2)[1] || 53;
 
     /* Build the request */
     buffers.push(Buffer.from(axfrReqProloge, 'binary'));
     split.forEach(function(elem) {
-        var label = Buffer.from('\00' + elem, 'utf8');
+        const label = Buffer.from('\00' + elem, 'utf8');
         label.writeUInt8(elem.length, 0);
         buffers.push(label);
     });
     buffers.push(Buffer.from(axfrReqEpiloge, 'binary'));
-    var buffer = Buffer.concat(buffers);
+    const buffer = Buffer.concat(buffers);
 
     /* Set size and transaction ID */
     buffer.writeUInt16BE(buffer.length - 2, 0);
     buffer.writeUInt16BE(Math.floor((Math.random() * 65535) + 1) , 2);
 
     /* Connect and send request */
-    var socket = net.connect(port, hostname, function(arguments) {
+    const socket = net.connect(port, hostname, function(arguments) {
         socket.write(buffer.toString('binary'), 'binary');
-        socket.end();
     });
 
     if (timeout)
@@ -258,12 +257,12 @@ dns.resolveAxfr = function(server, domain, callback) {
 
             /* Concat the buffers & parse response*/
             buf = Buffer.concat(responses, tlen);
-            var tmpBuf = buf.slice(0, (len + 2));
-            var res = parseResponse(tmpBuf, results);
+            const tmpBuf = buf.slice(0, (len + 2));
+            const res = parseResponse(tmpBuf, results);
 
             if (typeof res !== 'object') {
                 socket.destroy();
-                callback(res, "Error on response");
+                callback(new Error(`Invalid response, ( typeof res !== 'object' ) got ${typeof res}`, res);
             }
         }
 
@@ -271,7 +270,7 @@ dns.resolveAxfr = function(server, domain, callback) {
         if (tlen > (len+2)) {
 
             /* Start a new dns response with the remaining data */
-            var tmpBuf = buf.slice(len + 2);
+            const tmpBuf = buf.slice(len + 2);
 
             len = tmpBuf.readUInt16BE(0);
             tlen = tmpBuf.length;
@@ -280,21 +279,34 @@ dns.resolveAxfr = function(server, domain, callback) {
             responses.push(tmpBuf);
         }
 
+        socket.end();
+
+
     });
 
-    socket.on('timeout', function() {
+    socket.on('timeout', function timeout() {
         socket.destroy();
-        callback(-5, "Timeout");
+        callback(new Error(`Timeout after ${timeout}`));
     });
 
-    socket.on('end', function() {
-        callback(0, results);
+    socket.on('end', function end() {
+        callback(null, results);
     });
 
-    socket.on('error', function() {
-        callback(-4, "Error connecting");
+    socket.on('error', function error(err) {
+        callback(err);
     });
 
 };
+
+dns.axfr = function axfr(server, domain, timeout = 0){
+  dns.resolveAxfrTimeout(timeout);
+  return new Promise(function (resolve, reject){
+    dns.resolveAxfr(server, domain, function callback(err, response){
+      if (err) return reject(err);
+      return resolve(response);
+    });
+  });
+}
 
 module.exports = dns;
