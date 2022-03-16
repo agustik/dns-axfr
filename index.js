@@ -238,19 +238,33 @@ dns.resolveAxfr = function(server, domain, callback) {
         socket.write(buffer.toString('binary'), 'binary');
     });
 
-    if (timeout)
-        socket.setTimeout(timeout);
+    if (timeout) {
+      socket.setTimeout(timeout);
+    }
+
+    const ms = 500;
+
+    // If there is no data for 500ms, then end the socket
+
+    let timer = false;
 
     /* Parse response */
     socket.on('data', function(data) {
 
+      if (timer){
+        clearTimeout(timer);
+      }
+
         /* Get expected response length */
-        if (len === 0)
-            len = data.readUInt16BE(0);
+        if (len === 0){
+          len = data.readUInt16BE(0);
+        }
 
         /* Save response buffers till length is reached */
         responses.push(data);
         tlen += data.length;
+
+
 
         /* Check if we have a complete response */
         if (tlen >= (len +2)) {
@@ -268,18 +282,21 @@ dns.resolveAxfr = function(server, domain, callback) {
 
         /* Check if response was larger than expected */
         if (tlen > (len+2)) {
-
             /* Start a new dns response with the remaining data */
             const tmpBuf = buf.slice(len + 2);
 
             len = tmpBuf.readUInt16BE(0);
             tlen = tmpBuf.length;
-
             responses = [];
             responses.push(tmpBuf);
         }
 
-        socket.end();
+
+        timer = setTimeout(function (){
+          socket.end();
+        }, ms)
+
+        // socket.end();
     });
 
     socket.on('timeout', function timeout() {
